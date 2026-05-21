@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "html5-qrcode": "^2.3.8"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^2.3.0"
+  }
+}
