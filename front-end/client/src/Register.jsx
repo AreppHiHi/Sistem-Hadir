@@ -32,7 +32,7 @@ const Register = () => {
     setError('');
     
     try {
-      const res = await axios.post('http://10.1.30.147:5000/api/register', formData);
+      const res = await axios.post('https://hadir-backend.onrender.com/api/register', formData);
       
       // Jika berjaya, tangkap ID yang dijana oleh backend
       const newUserId = res.data.data.p_id; 

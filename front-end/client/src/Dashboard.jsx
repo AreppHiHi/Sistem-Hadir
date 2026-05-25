@@ -44,14 +44,15 @@ const Dashboard = () => {
 
   const fetchData = async (p_id) => {
     try {
-      const resEvents = await axios.get('http://10.1.30.147:5000/api/admin/events');
+      const resEvents = await axios.get('https://hadir-backend.onrender.com/api/admin/events');
       setEvents(resEvents.data.filter(ev => ev.status !== 'draft'));
       
-      const resJoined = await axios.get(`http://10.1.30.147:5000/api/user/${p_id}/joined-events`);
+      const resJoined = await axios.get(`https://hadir-backend.onrender.com/api/user/${p_id}/joined-events`);
       setJoinedEvents(resJoined.data);
     } catch (error) {
       console.error(systemSettings.language === 'ms' ? "Gagal memuat turun senarai acara" : "Failed to load events");
     } finally {
+
       setLoading(false);
     }
   };

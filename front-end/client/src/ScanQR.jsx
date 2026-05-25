@@ -43,7 +43,7 @@ const ScanQR = () => {
 
       try {
         // PASTIKAN URL INI SAMA DENGAN BACKEND ANDA
-        const response = await axios.post('http://10.1.30.147:5000/api/checkin', {
+        const response = await axios.post('https://hadir-backend.onrender.com/api/checkin', {
           p_id: user.p_id,
           qr_data: decodedText 
         });

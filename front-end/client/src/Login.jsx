@@ -35,7 +35,7 @@ const Login = () => {
     setError('');
 
     try {
-      const res = await axios.post('http://10.1.30.147:5000/api/login', formData);
+      const res = await axios.post('https://hadir-backend.onrender.com/api/login', formData);
       
       localStorage.setItem('user', JSON.stringify(res.data.user));
       

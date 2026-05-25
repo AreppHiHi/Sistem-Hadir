@@ -48,7 +48,7 @@ const Profile = () => {
     setLoading(true); setMessage({ type: '', text: '' });
 
     try {
-      const res = await axios.put('http://10.1.30.147:5000/api/user/update-profile', {
+      const res = await axios.put('https://hadir-backend.onrender.com/api/user/update-profile', {
         p_id: user.p_id,
         ...formData
       });

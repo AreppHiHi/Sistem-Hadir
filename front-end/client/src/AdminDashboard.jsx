@@ -62,9 +62,9 @@ const AdminDashboard = () => {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const resParticipants = await axios.get('http://10.1.30.147:5000/api/admin/participants');
+      const resParticipants = await axios.get('https://hadir-backend.onrender.com/api/admin/participants');
       setParticipants(resParticipants.data);
-      const resEvents = await axios.get('http://10.1.30.147:5000/api/admin/events');
+      const resEvents = await axios.get('https://hadir-backend.onrender.com/api/admin/events');
       setEvents(resEvents.data);
     } catch (error) {
       console.error(systemSettings.language === 'ms' ? "Gagal memuat turun data" : "Failed to load data");
@@ -77,7 +77,7 @@ const AdminDashboard = () => {
     setSelectedUser(user);
     setActiveDropdown(null);
     try {
-      const res = await axios.get(`http://10.1.30.147:5000/api/admin/participants/${user.p_id}/history`);
+      const res = await axios.get(`https://hadir-backend.onrender.com/api/admin/participants/${user.p_id}/history`);
       setUserEventHistory(res.data);
     } catch (err) {
       console.error("Gagal ambil sejarah acara");
@@ -87,7 +87,7 @@ const AdminDashboard = () => {
   const handleViewEventParticipants = async (event) => {
     setSelectedEventInfo(event);
     try {
-      const res = await axios.get(`http://10.1.30.147:5000/api/admin/events/${event.id}/participants`);
+      const res = await axios.get(`https://hadir-backend.onrender.com/api/admin/events/${event.id}/participants`);
       setEventParticipants(res.data);
     } catch (err) {
       console.error("Gagal ambil senarai peserta acara");
@@ -110,10 +110,10 @@ const AdminDashboard = () => {
     e.preventDefault();
     try {
       if (isEditingEvent) {
-        await axios.put(`http://10.1.30.147:5000/api/admin/events/${eventForm.id}`, eventForm);
+        await axios.put(`https://hadir-backend.onrender.com/api/admin/events/${eventForm.id}`, eventForm);
         alert(systemSettings.language === 'ms' ? "Acara dikemas kini!" : "Event updated!");
       } else {
-        await axios.post('http://10.1.30.147:5000/api/admin/events', eventForm);
+        await axios.post('https://hadir-backend.onrender.com/api/admin/events', eventForm);
         alert(systemSettings.language === 'ms' ? "Acara baharu dicipta!" : "New event created!");
       }
       setIsEventModalOpen(false);
@@ -127,7 +127,7 @@ const AdminDashboard = () => {
     const confirmMsg = systemSettings.language === 'ms' ? `Padam acara "${title}" secara kekal?` : `Permanently delete event "${title}"?`;
     if (!window.confirm(confirmMsg)) return;
     try {
-      await axios.delete(`http://10.1.30.147:5000/api/admin/events/${id}`);
+      await axios.delete(`https://hadir-backend.onrender.com/api/admin/events/${id}`);
       fetchAllData();
     } catch (error) { 
       alert(systemSettings.language === 'ms' ? "Ralat padam acara." : "Error deleting event."); 
@@ -139,7 +139,7 @@ const AdminDashboard = () => {
     const confirmMsg = systemSettings.language === 'ms' ? `Reset password ${name} kepada 'pass123'?` : `Reset password for ${name} to 'pass123'?`;
     if (!window.confirm(confirmMsg)) return;
     try {
-      const res = await axios.post('http://10.1.30.147:5000/api/admin/reset-password', { p_id });
+      const res = await axios.post('https://hadir-backend.onrender.com/api/admin/reset-password', { p_id });
       alert(res.data.message);
     } catch (error) { 
       alert(systemSettings.language === 'ms' ? "Ralat reset password." : "Error resetting password."); 
