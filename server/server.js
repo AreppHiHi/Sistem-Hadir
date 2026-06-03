@@ -4,13 +4,14 @@ const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
+const axios = require('axios');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // ==========================================
-// KONFIGURASI SUPABASE & NODEMAILER
+// KONFIGURASI SUPABASE 
 // ==========================================
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
@@ -94,64 +95,74 @@ app.post('/api/login', async (req, res) => {
 });
 
 // ==========================================
-// ZON 2: LUPA KATA LALUAN (OTP MELALUI EMEL)
+// ZONE 2 API: PROSES LUPA KATA LALUAN & HANTAR OTP
 // ==========================================
-app.post('/api/forgot-password/request-otp', async (req, res) => {
+app.post('/api/forgot-password', async (req, res) => {
   const { email } = req.body;
-  const targetEmail = email.trim().toLowerCase();
-  
-  const otp = Math.floor(100000 + Math.random() * 900000).toString(); 
+
+  // 1. Pastikan e-mel dimasukkan
+  if (!email) {
+    return res.status(400).json({ error: "Sila masukkan e-mel anda." });
+  }
 
   try {
-    const { data, error } = await supabase.from('participants')
-      .update({ reset_token: otp })
-      .eq('email', targetEmail).select();
-      
-    if (error || data.length === 0) return res.status(404).json({ error: "Emel tidak berdaftar di dalam sistem." });
+    // 2. Semak pangkalan data Supabase sama ada e-mel wujud atau tidak
+    // (Gantikan 'participants' dengan nama jadual sebenar anda jika berbeza)
+    const { data: user, error: userError } = await supabase
+      .from('participants')
+      .select('email')
+      .eq('email', email)
+      .single();
 
-    const mailOptions = {
-      from: `"Sistem HADIR" <${process.env.EMAIL_USER}>`,
-      to: targetEmail,
+    if (userError || !user) {
+      return res.status(404).json({ error: "E-mel tidak berdaftar di dalam Sistem Hadir." });
+    }
+
+    // 3. Jana Kod OTP 6-Digit Rawak
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // 4. (PILIHAN) Jika anda ada jadual untuk simpan OTP sementara di Supabase, masukkan kod simpanan di sini.
+    // Contoh: await supabase.from('otp_table').insert([{ email, otp_code: otpCode }]);
+
+    // 5. Konfigurasi data e-mel API Brevo
+    const emailData = {
+      sender: { 
+        name: "Admin Sistem Hadir", 
+        email: "ariffhihi810@gmail.com" // GUNA E-MEL YANG DIDAFTARKAN DI BREVO
+      },
+      to: [{ email: email }],
       subject: "Kod Pengesahan (OTP) Lupa Kata Laluan",
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
-          <h2 style="color: #2563eb;">Sistem HADIR</h2>
-          <p>Anda telah meminta untuk menetapkan semula kata laluan anda.</p>
-          <p>Berikut adalah kod OTP 6-digit anda:</p>
-          <h1 style="font-size: 32px; letter-spacing: 5px; color: #1e293b; background: #f8fafc; padding: 15px; border-radius: 10px; display: inline-block;">
-            ${otp}
-          </h1>
-          <p style="color: #ef4444; font-size: 12px; margin-top: 20px;">*Jika anda tidak membuat permintaan ini, sila abaikan emel ini.</p>
+      htmlContent: `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #ffffff;">
+          <h2 style="color: #0f172a; text-align: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">Sistem Hadir Bengkel Koperasi</h2>
+          <p style="color: #334155; font-size: 16px;">Seseorang telah memohon untuk menetapkan semula kata laluan bagi akaun anda.</p>
+          <p style="color: #334155; font-size: 16px;">Sila gunakan kod pengesahan (OTP) 6-digit di bawah untuk meneruskan proses penukaran kata laluan:</p>
+          
+          <div style="background-color: #f8fafc; border: 2px dashed #94a3b8; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1e293b; margin: 25px 0; border-radius: 8px;">
+            ${otpCode} 
+          </div>
+          
+          <p style="font-size: 13px; color: #64748b; text-align: center;">Jika anda tidak membuat permohonan ini, sila abaikan e-mel ini. Kod ini adalah sulit dan jangan kongsi dengan sesiapa.</p>
         </div>
       `
     };
 
-    await transporter.sendMail(mailOptions);
-    res.status(200).json({ message: "Kod OTP telah dihantar ke emel anda." });
+    // 6. Hantar permintaan ke API Brevo menggunakan Axios
+    await axios.post('https://api.brevo.com/v3/smtp/email', emailData, {
+      headers: {
+        'api-key': process.env.BREVO_API_KEY,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log(`[SUKSES] E-mel OTP dihantar kepada: ${email}`);
+    
+    // 7. Pulangkan jawapan sukses kepada Vercel/Frontend
+    return res.status(200).json({ message: "Kod OTP telah berjaya dihantar ke e-mel anda." });
+
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: "Gagal menghantar emel OTP. Pastikan tetapan emel pelayan betul." });
-  }
-});
-
-app.post('/api/forgot-password/reset', async (req, res) => {
-  const { email, otp, newPassword } = req.body;
-
-  try {
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(newPassword, salt);
-
-    const { data, error } = await supabase.from('participants')
-      .update({ password: hashedPassword, reset_token: null }) 
-      .eq('email', email.trim().toLowerCase())
-      .eq('reset_token', otp.trim())
-      .select();
-
-    if (error || data.length === 0) return res.status(400).json({ error: "Kod OTP tidak sah atau salah." });
-
-    res.status(200).json({ message: "Kata laluan berjaya ditukar! Sila log masuk." });
-  } catch (error) {
-    res.status(500).json({ error: "Ralat semasa menukar kata laluan." });
+    console.error("[RALAT BREVO API]:", error.response ? error.response.data : error.message);
+    return res.status(500).json({ error: "Sistem pelayan gagal menghantar e-mel. Sila cuba sebentar lagi." });
   }
 });
 
