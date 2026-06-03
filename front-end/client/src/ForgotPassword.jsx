@@ -27,7 +27,7 @@ const ForgotPassword = () => {
     setLoading(true); setMessage({ type: '', text: '' });
     
     try {
-      const res = await axios.post('https://hadir-backend.onrender.com/api/forgot-password/request-otp', { email });
+      const res = await axios.post('https://hadir-backend.onrender.com/api/forgot-password/', { email });
       setMessage({ type: 'success', text: res.data.message });
       setStep(2); 
     } catch (err) {
@@ -50,7 +50,7 @@ const ForgotPassword = () => {
     setLoading(true); setMessage({ type: '', text: '' });
 
     try {
-      const res = await axios.post('http://10.1.30.147:5000/api/forgot-password/reset', { 
+      const res = await axios.post('https://hadir-backend.onrender.com/api/forgot-password/reset', { 
         email, 
         otp, 
         newPassword 
