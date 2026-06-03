@@ -52,14 +52,15 @@ const Dashboard = () => {
     } catch (error) {
       console.error(systemSettings.language === 'ms' ? "Gagal memuat turun senarai acara" : "Failed to load events");
     } finally {
-
       setLoading(false);
     }
   };
 
   const handleJoinEvent = async (eventId) => {
     try {
-      await axios.post('http://10.1.30.147:5000/api/user/join-event', { p_id: user.p_id, event_id: eventId });
+      // PAUTAN INI TELAH DIBETULKAN KE PELAYAN RENDER
+      await axios.post('https://hadir-backend.onrender.com/api/user/join-event', { p_id: user.p_id, event_id: eventId });
+      
       alert(systemSettings.language === 'ms' ? "Tahniah! Anda berjaya mendaftar ke acara ini." : "Congratulations! You have successfully registered for this event.");
       fetchData(user.p_id); 
     } catch (error) {
