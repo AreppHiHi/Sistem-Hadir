@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const otpStorage = new Map();
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const bcrypt = require('bcryptjs');
@@ -118,11 +119,55 @@ app.post('/api/forgot-password', async (req, res) => {
       return res.status(404).json({ error: "E-mel tidak berdaftar di dalam Sistem Hadir." });
     }
 
-    // 3. Jana Kod OTP 6-Digit Rawak
+  // 3. Jana Kod OTP 6-Digit Rawak
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // SIMPAN OTP KE DALAM MEMORI PELAYAN
+    otpStorage.set(email, otpCode);
 
     // 4. (PILIHAN) Jika anda ada jadual untuk simpan OTP sementara di Supabase, masukkan kod simpanan di sini.
     // Contoh: await supabase.from('otp_table').insert([{ email, otp_code: otpCode }]);
+    
+    // ==========================================
+// API: SEMAK OTP & TUKAR KATA LALUAN BAHARU
+// ==========================================
+app.post('/api/forgot-password/reset', async (req, res) => {
+  // Nota: Pastikan nama 'newPassword' ini sama dengan apa yang dihantar oleh Frontend (React) anda
+  const { email, otp, newPassword } = req.body;
+
+  // 1. Semak jika OTP sepadan dengan apa yang disimpan
+  const storedOtp = otpStorage.get(email);
+  
+  if (!storedOtp) {
+    return res.status(400).json({ error: "Sila minta kod OTP baharu. Kod tiada dalam rekod." });
+  }
+
+  if (storedOtp !== otp) {
+    return res.status(400).json({ error: "Kod OTP tidak sah atau salah." });
+  }
+
+  // 2. Jika OTP betul, kemas kini kata laluan di Supabase
+  try {
+    const { error } = await supabase
+      .from('participants') // Pastikan nama jadual anda betul
+      .update({ password: newPassword }) // Pastikan nama lajur 'password' ini betul dalam pangkalan data
+      .eq('email', email);
+
+    if (error) {
+      console.error("[RALAT SUPABASE]:", error);
+      return res.status(500).json({ error: "Gagal mengemas kini kata laluan di pangkalan data." });
+    }
+
+    // 3. Padam OTP dari memori (supaya kod yang sama tak boleh diguna 2 kali)
+    otpStorage.delete(email);
+
+    return res.status(200).json({ message: "Kata laluan berjaya ditukar! Sila log masuk." });
+
+  } catch (error) {
+    console.error("[RALAT SERVER]:", error);
+    return res.status(500).json({ error: "Berlaku ralat pelayan semasa menukar kata laluan." });
+  }
+});
 
     // 5. Konfigurasi data e-mel API Brevo
     const emailData = {
