@@ -128,7 +128,7 @@ app.post('/api/forgot-password', async (req, res) => {
     const emailData = {
       sender: { 
         name: "Admin Sistem Hadir", 
-        email: "ariffhihi246@gmail.com" // GUNA E-MEL YANG DIDAFTARKAN DI BREVO
+        email: "ariffzakwan246@gmail.com" // GUNA E-MEL YANG DIDAFTARKAN DI BREVO
       },
       to: [{ email: email }],
       subject: "Kod Pengesahan (OTP) Lupa Kata Laluan",
