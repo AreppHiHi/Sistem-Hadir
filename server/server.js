@@ -209,6 +209,49 @@ app.post('/api/forgot-password/reset', async (req, res) => {
     console.error("[RALAT BREVO API]:", error.response ? error.response.data : error.message);
     return res.status(500).json({ error: "Sistem pelayan gagal menghantar e-mel. Sila cuba sebentar lagi." });
   }
+});// ==========================================
+// API: SEMAK OTP & TUKAR KATA LALUAN BAHARU
+// ==========================================
+app.post('/api/forgot-password/reset', async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+
+  // 1. Semak jika OTP sepadan dengan apa yang disimpan
+  const storedOtp = otpStorage.get(email);
+  
+  if (!storedOtp) {
+    return res.status(400).json({ error: "Sila minta kod OTP baharu. Kod tiada dalam rekod." });
+  }
+
+  if (storedOtp !== otp) {
+    return res.status(400).json({ error: "Kod OTP tidak sah atau salah." });
+  }
+
+  // 2. ENCRYPT KATA LALUAN BAHARU SEBELUM DISIMPAN
+  try {
+    // Menjana kod hash untuk kata laluan baharu
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    // 3. Kemas kini kata laluan yang TELAH DI-ENCRYPT ke Supabase
+    const { error } = await supabase
+      .from('participants')
+      .update({ password: hashedPassword }) // <- Gunakan hashedPassword yang selamat
+      .eq('email', email);
+
+    if (error) {
+      console.error("[RALAT SUPABASE]:", error);
+      return res.status(500).json({ error: "Gagal mengemas kini kata laluan di pangkalan data." });
+    }
+
+    // 4. Padam OTP dari memori
+    otpStorage.delete(email);
+
+    return res.status(200).json({ message: "Kata laluan berjaya ditukar! Sila log masuk." });
+
+  } catch (error) {
+    console.error("[RALAT SERVER]:", error);
+    return res.status(500).json({ error: "Berlaku ralat pelayan semasa menukar kata laluan." });
+  }
 });
 
 // ==========================================
