@@ -31,7 +31,6 @@ const generateParticipantId = () => Math.floor(1000 + Math.random() * 9000).toSt
 // ZON 1: PENDAFTARAN & LOG MASUK
 // ==========================================
 app.post('/api/register', async (req, res) => {
-  // Ditambah: nama_ringkas_koperasi
   const { full_name, email, phone, password, koperasi, nama_ringkas_koperasi } = req.body;
   
   try {
@@ -101,14 +100,11 @@ app.post('/api/login', async (req, res) => {
 app.post('/api/forgot-password', async (req, res) => {
   const { email } = req.body;
 
-  // 1. Pastikan e-mel dimasukkan
   if (!email) {
     return res.status(400).json({ error: "Sila masukkan e-mel anda." });
   }
 
   try {
-    // 2. Semak pangkalan data Supabase sama ada e-mel wujud atau tidak
-    // (Gantikan 'participants' dengan nama jadual sebenar anda jika berbeza)
     const { data: user, error: userError } = await supabase
       .from('participants')
       .select('email')
@@ -119,61 +115,13 @@ app.post('/api/forgot-password', async (req, res) => {
       return res.status(404).json({ error: "E-mel tidak berdaftar di dalam Sistem Hadir." });
     }
 
-  // 3. Jana Kod OTP 6-Digit Rawak
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // SIMPAN OTP KE DALAM MEMORI PELAYAN
     otpStorage.set(email, otpCode);
 
-    // 4. (PILIHAN) Jika anda ada jadual untuk simpan OTP sementara di Supabase, masukkan kod simpanan di sini.
-    // Contoh: await supabase.from('otp_table').insert([{ email, otp_code: otpCode }]);
-    
-    // ==========================================
-// API: SEMAK OTP & TUKAR KATA LALUAN BAHARU
-// ==========================================
-app.post('/api/forgot-password/reset', async (req, res) => {
-  // Nota: Pastikan nama 'newPassword' ini sama dengan apa yang dihantar oleh Frontend (React) anda
-  const { email, otp, newPassword } = req.body;
-
-  // 1. Semak jika OTP sepadan dengan apa yang disimpan
-  const storedOtp = otpStorage.get(email);
-  
-  if (!storedOtp) {
-    return res.status(400).json({ error: "Sila minta kod OTP baharu. Kod tiada dalam rekod." });
-  }
-
-  if (storedOtp !== otp) {
-    return res.status(400).json({ error: "Kod OTP tidak sah atau salah." });
-  }
-
-  // 2. Jika OTP betul, kemas kini kata laluan di Supabase
-  try {
-    const { error } = await supabase
-      .from('participants') // Pastikan nama jadual anda betul
-      .update({ password: newPassword }) // Pastikan nama lajur 'password' ini betul dalam pangkalan data
-      .eq('email', email);
-
-    if (error) {
-      console.error("[RALAT SUPABASE]:", error);
-      return res.status(500).json({ error: "Gagal mengemas kini kata laluan di pangkalan data." });
-    }
-
-    // 3. Padam OTP dari memori (supaya kod yang sama tak boleh diguna 2 kali)
-    otpStorage.delete(email);
-
-    return res.status(200).json({ message: "Kata laluan berjaya ditukar! Sila log masuk." });
-
-  } catch (error) {
-    console.error("[RALAT SERVER]:", error);
-    return res.status(500).json({ error: "Berlaku ralat pelayan semasa menukar kata laluan." });
-  }
-});
-
-    // 5. Konfigurasi data e-mel API Brevo
     const emailData = {
       sender: { 
         name: "Admin Sistem Hadir", 
-        email: "ariffzakwan246@gmail.com" // GUNA E-MEL YANG DIDAFTARKAN DI BREVO
+        email: "ariffzakwan246@gmail.com" 
       },
       to: [{ email: email }],
       subject: "Kod Pengesahan (OTP) Lupa Kata Laluan",
@@ -192,7 +140,6 @@ app.post('/api/forgot-password/reset', async (req, res) => {
       `
     };
 
-    // 6. Hantar permintaan ke API Brevo menggunakan Axios
     await axios.post('https://api.brevo.com/v3/smtp/email', emailData, {
       headers: {
         'api-key': process.env.BREVO_API_KEY,
@@ -201,21 +148,20 @@ app.post('/api/forgot-password/reset', async (req, res) => {
     });
 
     console.log(`[SUKSES] E-mel OTP dihantar kepada: ${email}`);
-    
-    // 7. Pulangkan jawapan sukses kepada Vercel/Frontend
     return res.status(200).json({ message: "Kod OTP telah berjaya dihantar ke e-mel anda." });
 
   } catch (error) {
     console.error("[RALAT BREVO API]:", error.response ? error.response.data : error.message);
     return res.status(500).json({ error: "Sistem pelayan gagal menghantar e-mel. Sila cuba sebentar lagi." });
   }
-});// ==========================================
+});
+
+// ==========================================
 // API: SEMAK OTP & TUKAR KATA LALUAN BAHARU
 // ==========================================
 app.post('/api/forgot-password/reset', async (req, res) => {
   const { email, otp, newPassword } = req.body;
 
-  // 1. Semak jika OTP sepadan dengan apa yang disimpan
   const storedOtp = otpStorage.get(email);
   
   if (!storedOtp) {
@@ -226,16 +172,13 @@ app.post('/api/forgot-password/reset', async (req, res) => {
     return res.status(400).json({ error: "Kod OTP tidak sah atau salah." });
   }
 
-  // 2. ENCRYPT KATA LALUAN BAHARU SEBELUM DISIMPAN
   try {
-    // Menjana kod hash untuk kata laluan baharu
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
-    // 3. Kemas kini kata laluan yang TELAH DI-ENCRYPT ke Supabase
     const { error } = await supabase
       .from('participants')
-      .update({ password: hashedPassword }) // <- Gunakan hashedPassword yang selamat
+      .update({ password: hashedPassword })
       .eq('email', email);
 
     if (error) {
@@ -243,7 +186,6 @@ app.post('/api/forgot-password/reset', async (req, res) => {
       return res.status(500).json({ error: "Gagal mengemas kini kata laluan di pangkalan data." });
     }
 
-    // 4. Padam OTP dari memori
     otpStorage.delete(email);
 
     return res.status(200).json({ message: "Kata laluan berjaya ditukar! Sila log masuk." });
@@ -308,7 +250,6 @@ app.post('/api/checkin', async (req, res) => {
 // ==========================================
 app.get('/api/admin/participants', async (req, res) => {
   try {
-    // Ditambah: Menarik data nama_ringkas_koperasi dari DB
     const { data, error } = await supabase.from('participants').select('id, full_name, email, phone, koperasi, nama_ringkas_koperasi, p_id, is_present').order('id', { ascending: false });
     if (error) throw error; res.status(200).json(data);
   } catch (error) { res.status(500).json({ error: "Gagal memuat turun." }); }
@@ -358,10 +299,14 @@ app.delete('/api/admin/events/:id', async (req, res) => {
   } catch (error) { res.status(500).json({ error: "Gagal memadam." }); }
 });
 
+// ==========================================
+// PENAMBAHAN KOPERASI DI DALAM API INI
+// ==========================================
 app.get('/api/admin/events/:id/participants', async (req, res) => {
   const { id } = req.params;
   try {
-    const { data, error } = await supabase.from('event_registrations').select(`attended, participants (p_id, full_name, email, phone)`).eq('event_id', id);
+    // Di sini lajur koperasi dimasukkan ke dalam .select()
+    const { data, error } = await supabase.from('event_registrations').select(`attended, participants (p_id, full_name, email, phone, koperasi)`).eq('event_id', id);
     if (error) throw error; res.status(200).json(data);
   } catch (error) { res.status(500).json({ error: "Ralat pelayan." }); }
 });
