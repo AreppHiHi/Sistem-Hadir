@@ -17,13 +17,11 @@ const ScanQR = () => {
   });
 
   useEffect(() => {
-    // 1. Muat Tetapan Sistem dari LocalStorage
     const savedSettings = localStorage.getItem('userSettings');
     if (savedSettings) {
       setSystemSettings(JSON.parse(savedSettings));
     }
 
-    // 2. Muat Data Pengguna
     const savedUser = localStorage.getItem('user');
     if (!savedUser) navigate('/login');
     else setUser(JSON.parse(savedUser));
@@ -42,13 +40,11 @@ const ScanQR = () => {
       setScanStatus('loading');
 
       try {
-        // PASTIKAN URL INI SAMA DENGAN BACKEND ANDA
         const response = await axios.post('https://hadir-backend.onrender.com/api/checkin', {
           p_id: user.p_id,
           qr_data: decodedText 
         });
 
-        // Kemas kini status is_present di pelayar web
         const updatedUser = { ...user, is_present: true };
         localStorage.setItem('user', JSON.stringify(updatedUser));
         
@@ -70,7 +66,6 @@ const ScanQR = () => {
   if (!user) return null;
 
   return (
-    // PEMBUNGKUS MOD GELAP
     <div className={`${systemSettings.darkMode ? 'dark' : ''}`}>
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4 font-sans transition-colors duration-300">
         
@@ -86,11 +81,51 @@ const ScanQR = () => {
           </h2>
 
           {scanStatus === 'scanning' && (
-            <div className="overflow-hidden rounded-2xl border-2 border-blue-200 dark:border-blue-800">
-              {/* KOTAK RENDER KAMERA */}
-              <div id="reader" className="w-full bg-black"></div>
+            <div className="overflow-hidden rounded-2xl border-2 border-slate-200 dark:border-slate-800">
+              
+              {/* CSS KHAS UNTUK MENGHIAS BUTANG HTML5-QRCODE */}
+              <style dangerouslySetInnerHTML={{__html: `
+                #reader { border: none !important; padding: 1rem; }
+                #reader button {
+                  background-color: #2563eb !important;
+                  color: white !important;
+                  padding: 10px 20px !important;
+                  border-radius: 8px !important;
+                  font-weight: bold !important;
+                  border: none !important;
+                  margin: 10px 5px !important;
+                  cursor: pointer;
+                  transition: all 0.2s;
+                }
+                #reader button:hover { background-color: #1d4ed8 !important; }
+                #reader select {
+                  padding: 10px !important;
+                  border-radius: 8px !important;
+                  border: 1px solid #cbd5e1 !important;
+                  margin-bottom: 15px !important;
+                  width: 100% !important;
+                  max-width: 300px !important;
+                  background-color: white !important;
+                  color: #0f172a !important;
+                  font-weight: 600 !important;
+                }
+                .dark #reader select {
+                  background-color: #1e293b !important;
+                  color: white !important;
+                  border-color: #334155 !important;
+                }
+                #reader__dashboard_section_csr span {
+                  color: inherit !important;
+                  font-weight: 500 !important;
+                }
+                #reader__dashboard_section_swaplink { text-decoration: none !important; color: #2563eb !important; font-weight: bold !important; }
+              `}} />
+
+              {/* KOTAK RENDER KAMERA YANG TELAH DIBETULKAN */}
+              <div id="reader" className="w-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"></div>
+              
               <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-4 pb-4 px-2">
-                {systemSettings.language === 'ms' ? 'Halakan kamera pada QR Code Admin.' : 'Point the camera at the Admin\'s QR Code.'}
+                {systemSettings.language === 'ms' ? 'Pilih kamera dan halakan pada QR Code Admin.' : 'Select a camera and point it at the Admin\'s QR Code.'}
               </p>
             </div>
           )}
