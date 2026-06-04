@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, Calendar, Settings, LogOut, 
   Search, MoreHorizontal, Eye, KeyRound, X, 
   TrendingUp, Users2, CalendarDays, Plus, MapPin, Edit2, Trash2,
-  Menu, QrCode, Globe, Bell, Moon, Shield
+  Menu, QrCode, Globe, Bell, Moon, Shield, Download, FileSpreadsheet
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -93,6 +93,82 @@ const AdminDashboard = () => {
       console.error("Gagal ambil senarai peserta acara");
     }
   };
+
+  // --- FUNGSI EXPORT DATA (CSV & EXCEL) ---
+  const handleDownloadCSV = () => {
+    if (!eventParticipants || eventParticipants.length === 0) return;
+    
+    let csvContent = "data:text/csv;charset=utf-8,";
+    // Headers
+    csvContent += (systemSettings.language === 'ms' ? "Nama,Koperasi,Emel,Status\n" : "Name,Cooperative,Email,Status\n");
+    
+    // Rows
+    eventParticipants.forEach(item => {
+      // Guna quotes untuk elak ralat jika ada koma di dalam nama/koperasi
+      const name = `"${item.participants.full_name || '-'}"`;
+      const koperasi = `"${item.participants.koperasi || '-'}"`; 
+      const email = `"${item.participants.email || '-'}"`;
+      const status = item.attended 
+        ? (systemSettings.language === 'ms' ? "HADIR" : "ATTENDED") 
+        : (systemSettings.language === 'ms' ? "TIDAK HADIR" : "ABSENT");
+      
+      csvContent += `${name},${koperasi},${email},${status}\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Kehadiran_${selectedEventInfo.title.replace(/\s+/g, '_')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadExcel = () => {
+    if (!eventParticipants || eventParticipants.length === 0) return;
+    
+    // Format asas HTML table yang boleh dibaca sebagai Excel (.xls)
+    let tableHTML = `
+      <html xmlns:x="urn:schemas-microsoft-com:office:excel">
+      <head>
+        <meta charset="utf-8">
+      </head>
+      <body>
+        <table border="1">
+          <thead>
+            <tr>
+              <th style="background-color: #f3f4f6;">Nama</th>
+              <th style="background-color: #f3f4f6;">Koperasi</th>
+              <th style="background-color: #f3f4f6;">Emel</th>
+              <th style="background-color: #f3f4f6;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+    
+    eventParticipants.forEach(item => {
+      const name = item.participants.full_name || '-';
+      const koperasi = item.participants.koperasi || '-';
+      const email = item.participants.email || '-';
+      const status = item.attended 
+        ? (systemSettings.language === 'ms' ? "HADIR" : "ATTENDED") 
+        : (systemSettings.language === 'ms' ? "TIDAK HADIR" : "ABSENT");
+        
+      tableHTML += `<tr><td>${name}</td><td>${koperasi}</td><td>${email}</td><td>${status}</td></tr>`;
+    });
+    
+    tableHTML += `</tbody></table></body></html>`;
+    
+    const blob = new Blob([tableHTML], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Kehadiran_${selectedEventInfo.title.replace(/\s+/g, '_')}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+  // -----------------------------------------
 
   const openCreateModal = () => {
     setEventForm({ id: null, title: '', description: '', date: '', time: '', location: '', type: 'Seminar', capacity: 50, status: 'published' });
@@ -555,7 +631,14 @@ const AdminDashboard = () => {
               </div>
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-14 h-14 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xl">{selectedUser.full_name.charAt(0)}</div>
-                <div><h4 className="font-bold text-lg dark:text-white">{selectedUser.full_name}</h4><p className="text-xs text-slate-500 dark:text-slate-400">ID: {selectedUser.p_id}</p></div>
+                <div>
+                  <h4 className="font-bold text-lg dark:text-white leading-tight">{selectedUser.full_name}</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">ID: {selectedUser.p_id}</p>
+                  {/* PENAMBAHAN MAKLUMAT KOPERASI DI SINI */}
+                  <p className="text-sm text-slate-700 dark:text-slate-300 mt-1 font-medium">
+                    {systemSettings.language === 'ms' ? 'Koperasi:' : 'Cooperative:'} <span className="font-bold text-indigo-600 dark:text-indigo-400">{selectedUser.koperasi || '-'}</span>
+                  </p>
+                </div>
               </div>
               <div>
                 <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 uppercase tracking-wider">
@@ -582,13 +665,26 @@ const AdminDashboard = () => {
         {/* MODAL 4: SENARAI PESERTA ACARA */}
         {selectedEventInfo && (
           <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[80vh] border border-transparent dark:border-slate-800">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] border border-transparent dark:border-slate-800">
               <div className="p-6 border-b dark:border-slate-800 flex justify-between items-start">
                 <div>
                   <h3 className="text-xl font-bold dark:text-white">{systemSettings.language === 'ms' ? 'Senarai Peserta' : 'Participant List'}</h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400">{selectedEventInfo.title}</p>
                 </div>
-                <button onClick={()=>setSelectedEventInfo(null)}><X className="text-slate-400"/></button>
+                <div className="flex items-center gap-3">
+                  {/* BUTANG EXPORT CSV & EXCEL DI SINI */}
+                  {eventParticipants.length > 0 && (
+                    <div className="flex gap-2 mr-4">
+                      <button onClick={handleDownloadCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-bold transition-colors">
+                        <Download size={14} /> CSV
+                      </button>
+                      <button onClick={handleDownloadExcel} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 rounded-lg text-xs font-bold transition-colors">
+                        <FileSpreadsheet size={14} /> EXCEL
+                      </button>
+                    </div>
+                  )}
+                  <button onClick={()=>setSelectedEventInfo(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white"><X/></button>
+                </div>
               </div>
               <div className="p-6 overflow-y-auto">
                 {eventParticipants.length === 0 ? (
@@ -600,13 +696,20 @@ const AdminDashboard = () => {
                     <thead>
                       <tr className="text-xs text-slate-400 uppercase border-b dark:border-slate-800">
                         <th className="pb-3">{systemSettings.language === 'ms' ? 'Nama Peserta' : 'Participant Name'}</th>
+                        <th className="pb-3">{systemSettings.language === 'ms' ? 'Koperasi' : 'Cooperative'}</th>
                         <th className="pb-3 text-center">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y dark:divide-slate-800">
                       {eventParticipants.map((item, idx) => (
                         <tr key={idx}>
-                          <td className="py-3"><p className="text-sm font-bold dark:text-white">{item.participants.full_name}</p><p className="text-xs text-slate-500 dark:text-slate-400">{item.participants.email}</p></td>
+                          <td className="py-3">
+                            <p className="text-sm font-bold dark:text-white">{item.participants.full_name}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">{item.participants.email}</p>
+                          </td>
+                          <td className="py-3">
+                            <p className="text-sm text-slate-700 dark:text-slate-300">{item.participants.koperasi || '-'}</p>
+                          </td>
                           <td className="py-3 text-center">
                             {item.attended 
                               ? <span className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-1 rounded text-[10px] font-bold">{systemSettings.language === 'ms' ? 'HADIR' : 'ATTENDED'}</span> 
