@@ -52,6 +52,7 @@ const ScanQR = () => {
         setMessage(response.data.message);
       } catch (error) {
         setScanStatus('error');
+        // Mesej dari backend (cth: "Anda belum mendaftar acara ini!" atau "QR Code tidak sah!")
         setMessage(error.response?.data?.error || (systemSettings.language === 'ms' ? "Gagal mengesahkan kehadiran." : "Failed to verify attendance."));
       }
     };
@@ -80,10 +81,12 @@ const ScanQR = () => {
             {systemSettings.language === 'ms' ? 'Imbas QR Kehadiran' : 'Scan Attendance QR'}
           </h2>
 
+          {/* ========================================== */}
+          {/* PAPARAN MENGIMBAS (SCANNING)               */}
+          {/* ========================================== */}
           {scanStatus === 'scanning' && (
             <div className="overflow-hidden rounded-2xl border-2 border-slate-200 dark:border-slate-800">
               
-              {/* CSS KHAS UNTUK MENGHIAS BUTANG HTML5-QRCODE */}
               <style dangerouslySetInnerHTML={{__html: `
                 #reader { border: none !important; padding: 1rem; }
                 #reader button {
@@ -121,7 +124,6 @@ const ScanQR = () => {
                 #reader__dashboard_section_swaplink { text-decoration: none !important; color: #2563eb !important; font-weight: bold !important; }
               `}} />
 
-              {/* KOTAK RENDER KAMERA YANG TELAH DIBETULKAN */}
               <div id="reader" className="w-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"></div>
               
               <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-4 pb-4 px-2">
@@ -130,6 +132,9 @@ const ScanQR = () => {
             </div>
           )}
 
+          {/* ========================================== */}
+          {/* PAPARAN MEMUAT (LOADING)                   */}
+          {/* ========================================== */}
           {scanStatus === 'loading' && (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 dark:border-blue-400 mx-auto mb-4"></div>
@@ -139,6 +144,9 @@ const ScanQR = () => {
             </div>
           )}
 
+          {/* ========================================== */}
+          {/* PAPARAN BERJAYA (SUCCESS)                  */}
+          {/* ========================================== */}
           {scanStatus === 'success' && (
             <div className="text-center py-8 animate-in zoom-in">
               <CheckCircle size={80} className="text-green-500 mx-auto mb-4" />
@@ -146,32 +154,38 @@ const ScanQR = () => {
                 {systemSettings.language === 'ms' ? 'Selesai!' : 'Success!'}
               </h3>
               <p className="text-slate-600 dark:text-slate-300 mb-8">{message}</p>
-              <Link to="/dashboard" className="inline-block bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 dark:hover:bg-blue-500 transition-colors">
+              <Link to="/dashboard" className="inline-block w-full bg-blue-600 text-white px-8 py-3.5 rounded-xl font-bold hover:bg-blue-700 dark:hover:bg-blue-500 transition-colors shadow-md">
                 {systemSettings.language === 'ms' ? 'Lihat Dashboard' : 'View Dashboard'}
               </Link>
             </div>
           )}
 
+          {/* ========================================== */}
+          {/* PAPARAN GAGAL/RALAT (ERROR)                */}
+          {/* ========================================== */}
           {scanStatus === 'error' && (
             <div className="text-center py-8 animate-in zoom-in">
               <XCircle size={80} className="text-red-500 mx-auto mb-4" />
               <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">
-                {systemSettings.language === 'ms' ? 'Ralat' : 'Error'}
+                {systemSettings.language === 'ms' ? 'Gagal Mendaftar!' : 'Registration Failed!'}
               </h3>
-              <p className="text-slate-600 dark:text-slate-300 mb-8">{message}</p>
-              <button 
-                onClick={() => setScanStatus('scanning')} 
-                className="bg-slate-800 dark:bg-slate-700 text-white px-8 py-3 rounded-xl font-bold hover:bg-slate-900 dark:hover:bg-slate-600 w-full mb-3 transition-colors"
-              >
-                {systemSettings.language === 'ms' ? 'Cuba Semula' : 'Try Again'}
-              </button>
-              <Link to="/dashboard" className="block text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white font-semibold mt-4 transition-colors">
-                {systemSettings.language === 'ms' ? 'Kembali ke Dashboard' : 'Back to Dashboard'}
-              </Link>
+              <p className="text-red-600 dark:text-red-400 font-semibold mb-8 px-4">{message}</p>
+              
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={() => setScanStatus('scanning')} 
+                  className="inline-block w-full bg-red-600 text-white px-8 py-3.5 rounded-xl font-bold hover:bg-red-700 dark:hover:bg-red-500 transition-colors shadow-md"
+                >
+                  {systemSettings.language === 'ms' ? 'Cuba Imbas Semula' : 'Try Scanning Again'}
+                </button>
+                <Link to="/dashboard" className="inline-block w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-8 py-3.5 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                  {systemSettings.language === 'ms' ? 'Kembali ke Dashboard' : 'Back to Dashboard'}
+                </Link>
+              </div>
             </div>
           )}
-        </div>
 
+        </div>
       </div>
     </div>
   );
