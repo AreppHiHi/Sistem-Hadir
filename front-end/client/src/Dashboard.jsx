@@ -315,7 +315,7 @@ const Dashboard = () => {
                           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
                             {systemSettings.language === 'ms' ? 'Anda telah mendaftar. Sila imbas QR di kaunter acara.' : 'You are registered. Please scan the QR at the event counter.'}
                           </p>
-                          <Link to="/scan" className="block w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white py-4 rounded-xl font-bold shadow-md transition-all mt-2 text-lg">
+                          <Link to={`/scan?event=${event.id}`} className="block w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white py-4 rounded-xl font-bold shadow-md transition-all mt-2 text-lg">
                             {systemSettings.language === 'ms' ? 'Buka Pengimbas QR' : 'Open QR Scanner'}
                           </Link>
                         </div>

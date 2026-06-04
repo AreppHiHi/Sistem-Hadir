@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import axios from 'axios';
 import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
 
 const ScanQR = () => {
   const navigate = useNavigate();
+  
+  // MENGAMBIL ID ACARA DARI DASHBOARD
+  const [searchParams] = useSearchParams();
+  const expectedEventId = searchParams.get('event');
+
   const [user, setUser] = useState(null);
   const [scanStatus, setScanStatus] = useState('scanning');
   const [message, setMessage] = useState('');
@@ -39,6 +44,17 @@ const ScanQR = () => {
       scanner.clear(); 
       setScanStatus('loading');
 
+      // ==========================================
+      // VALIDASI: HALANG PENGGUNA IMBAS QR ACARA LAIN
+      // ==========================================
+      if (expectedEventId && decodedText !== `HADIR-EVENT-${expectedEventId}`) {
+        setScanStatus('error');
+        setMessage(systemSettings.language === 'ms' 
+          ? "Gagal: Ini adalah QR Code bagi acara lain. Sila imbas QR Code yang betul untuk acara ini." 
+          : "Failed: This QR Code is for a different event. Please scan the correct one.");
+        return; // Berhenti di sini, jangan hantar ke backend
+      }
+
       try {
         const response = await axios.post('https://hadir-backend.onrender.com/api/checkin', {
           p_id: user.p_id,
@@ -52,7 +68,6 @@ const ScanQR = () => {
         setMessage(response.data.message);
       } catch (error) {
         setScanStatus('error');
-        // Mesej dari backend (cth: "Anda belum mendaftar acara ini!" atau "QR Code tidak sah!")
         setMessage(error.response?.data?.error || (systemSettings.language === 'ms' ? "Gagal mengesahkan kehadiran." : "Failed to verify attendance."));
       }
     };
@@ -62,7 +77,7 @@ const ScanQR = () => {
     return () => { 
       scanner.clear().catch(error => console.log("Kamera ditutup")); 
     };
-  }, [user, scanStatus, systemSettings.language]);
+  }, [user, scanStatus, systemSettings.language, expectedEventId]);
 
   if (!user) return null;
 
