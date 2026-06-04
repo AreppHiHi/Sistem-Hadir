@@ -10,27 +10,23 @@ const Profile = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   
-  // STATE BARU UNTUK GAMBAR PROFIL
+  // STATE BARU: GAMBAR & VIEW GAMBAR
   const [profilePic, setProfilePic] = useState(null);
+  const [viewImage, setViewImage] = useState(false);
 
   const [formData, setFormData] = useState({
     full_name: '', email: '', phone: '', koperasi: ''
   });
 
-  // --- STATE TETAPAN (LANGUAGE & DARK MODE) ---
   const [systemSettings, setSystemSettings] = useState({
     language: 'ms',
     darkMode: false
   });
 
   useEffect(() => {
-    // 1. Muat Tetapan Sistem dari LocalStorage
     const savedSettings = localStorage.getItem('userSettings');
-    if (savedSettings) {
-      setSystemSettings(JSON.parse(savedSettings));
-    }
+    if (savedSettings) setSystemSettings(JSON.parse(savedSettings));
 
-    // 2. Muat Data Pengguna
     const savedUser = localStorage.getItem('user');
     if (!savedUser) {
       navigate('/login');
@@ -38,7 +34,6 @@ const Profile = () => {
       const parsedUser = JSON.parse(savedUser);
       setUser(parsedUser);
       
-      // Semak jika pengguna sudah ada gambar profil yang disimpan
       if (parsedUser.profile_pic) {
         setProfilePic(parsedUser.profile_pic);
       }
@@ -53,28 +48,39 @@ const Profile = () => {
   }, [navigate]);
 
   // ==========================================
-  // FUNGSI MENGURUSKAN MUAT NAIK GAMBAR
+  // FUNGSI MUAT NAIK GAMBAR (AUTO SIMPAN KE DB)
   // ==========================================
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Pastikan saiz gambar bawah 2MB
     if (file.size > 2 * 1024 * 1024) {
       alert(systemSettings.language === 'ms' ? "Saiz gambar terlalu besar! Sila pilih gambar di bawah 2MB." : "Image size too large! Please select an image under 2MB.");
       return;
     }
 
-    // Tukar gambar kepada format Base64 untuk paparan & simpanan
     const reader = new FileReader();
-    reader.onloadend = () => {
+    reader.onloadend = async () => {
       const base64String = reader.result;
       setProfilePic(base64String); 
 
-      // Kemas kini data pengguna dalam localStorage secara automatik
       const updatedUser = { ...user, profile_pic: base64String };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       setUser(updatedUser);
+
+      // SIMPAN TERUS KE DATABASE SUPABASE MELALUI BACKEND
+      try {
+        await axios.put('https://hadir-backend.onrender.com/api/user/update-profile', {
+          p_id: user.p_id,
+          full_name: user.full_name,
+          email: user.email,
+          phone: user.phone,
+          koperasi: user.koperasi,
+          profile_pic: base64String // <- Data gambar dihantar ke pelayan
+        });
+      } catch (error) {
+        console.error("Gagal simpan gambar ke pangkalan data", error);
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -89,7 +95,6 @@ const Profile = () => {
         ...formData
       });
 
-      // Kekalkan profile_pic lama jika wujud, kemudian gabung dengan data baru
       const updatedUser = { ...user, ...res.data.user, profile_pic: profilePic || user.profile_pic };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       setUser(updatedUser);
@@ -112,11 +117,21 @@ const Profile = () => {
   if (!user) return null;
 
   return (
-    // PEMBUNGKUS MOD GELAP
     <div className={`${systemSettings.darkMode ? 'dark' : ''}`}>
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans transition-colors duration-300 pb-12">
         
-        {/* NAVBAR */}
+        {/* MODAL VIEW GAMBAR PENUH */}
+        {viewImage && profilePic && (
+          <div className="fixed inset-0 bg-slate-900/90 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in" onClick={() => setViewImage(false)}>
+            <div className="relative max-w-sm w-full animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
+              <button onClick={() => setViewImage(false)} className="absolute -top-12 right-0 text-white hover:text-slate-300 transition-colors">
+                <X size={32} />
+              </button>
+              <img src={profilePic} alt="Profile Full View" className="w-full h-auto rounded-full object-cover border-4 border-white dark:border-slate-800 shadow-2xl aspect-square" />
+            </div>
+          </div>
+        )}
+
         <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex items-center shadow-sm sticky top-0 z-50 transition-colors">
           <Link to="/dashboard" className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-600 dark:text-slate-400">
             <ArrowLeft size={20} />
@@ -129,12 +144,27 @@ const Profile = () => {
         <main className="max-w-2xl mx-auto p-4 md:p-8">
           <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl overflow-hidden border border-slate-100 dark:border-slate-800 transition-colors">
             
-            {/* Header Biru */}
             <div className="bg-blue-600 dark:bg-blue-700 h-32 relative">
                <div className="absolute -bottom-12 left-1/2 -translate-x-1/2">
                   
-                  {/* BAHAGIAN GAMBAR PROFIL DENGAN KLIK MUAT NAIK */}
-                  <div className="relative group cursor-pointer">
+                  {/* BAHAGIAN AVATAR & BUTANG KAMERA (DIASINGKAN) */}
+                  <div className="relative group">
+                    
+                    {/* GAMBAR PROFIL (KLIK UNTUK VIEW SAHAJA) */}
+                    <div 
+                      onClick={() => { if(profilePic) setViewImage(true) }}
+                      className={`w-24 h-24 rounded-full bg-white dark:bg-slate-900 p-1 shadow-lg transition-transform relative z-10 ${profilePic ? 'cursor-pointer hover:scale-105' : ''}`}
+                    >
+                       <div className="w-full h-full rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center overflow-hidden">
+                          {profilePic ? (
+                            <img src={profilePic} alt="Profile" className="w-full h-full object-cover rounded-full" />
+                          ) : (
+                            <UserCircle size={60} />
+                          )}
+                       </div>
+                    </div>
+                    
+                    {/* INPUT GAMBAR & BUTANG KAMERA KECIL */}
                     <input 
                       type="file" 
                       id="profileUpload" 
@@ -142,27 +172,14 @@ const Profile = () => {
                       className="hidden" 
                       onChange={handleImageUpload} 
                     />
-                    <label htmlFor="profileUpload" className="cursor-pointer block relative">
-                      <div className="w-24 h-24 rounded-full bg-white dark:bg-slate-900 p-1 shadow-lg transition-colors relative z-10">
-                         <div className="w-full h-full rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center overflow-hidden">
-                            {profilePic ? (
-                              <img src={profilePic} alt="Profile" className="w-full h-full object-cover rounded-full" />
-                            ) : (
-                              <UserCircle size={60} />
-                            )}
-                         </div>
-                      </div>
-                      
-                      {/* Latar gelap + Ikon Kamera bila hover (Untuk Desktop) */}
-                      <div className="absolute inset-0 bg-slate-900/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-20 m-1">
-                        <Camera className="text-white" size={24} />
-                      </div>
-                      
-                      {/* Lencana Kamera Kecil di penjuru (Untuk Mobile/Jelas) */}
-                      <div className="absolute bottom-0 right-0 bg-blue-600 dark:bg-blue-500 p-1.5 rounded-full border-2 border-white dark:border-slate-900 shadow-sm z-30">
-                        <Camera className="text-white" size={14} />
-                      </div>
+                    <label 
+                      htmlFor="profileUpload" 
+                      className="absolute bottom-0 right-0 bg-blue-600 dark:bg-blue-500 p-2 rounded-full border-2 border-white dark:border-slate-900 shadow-sm z-30 cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-400 transition-colors"
+                      title="Tukar Gambar"
+                    >
+                      <Camera className="text-white" size={14} />
                     </label>
+
                   </div>
 
                </div>

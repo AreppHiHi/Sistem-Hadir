@@ -9,7 +9,8 @@ const axios = require('axios');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+// HAD SAIZ DATA DIBESARKAN KE 10MB UNTUK GAMBAR
+app.use(express.json({ limit: '10mb' })); 
 
 // ==========================================
 // KONFIGURASI SUPABASE 
@@ -156,9 +157,6 @@ app.post('/api/forgot-password', async (req, res) => {
   }
 });
 
-// ==========================================
-// API: SEMAK OTP & TUKAR KATA LALUAN BAHARU
-// ==========================================
 app.post('/api/forgot-password/reset', async (req, res) => {
   const { email, otp, newPassword } = req.body;
 
@@ -220,17 +218,35 @@ app.get('/api/user/:p_id/joined-events', async (req, res) => {
   } catch (error) { res.status(500).json({ error: "Ralat" }); }
 });
 
+// ==========================================
+// KEMAS KINI FUNGSI PROFIL (KINI BOLEH TERIMA GAMBAR)
+// ==========================================
 app.put('/api/user/update-profile', async (req, res) => {
-  const { p_id, full_name, email, phone, koperasi } = req.body;
+  const { p_id, full_name, email, phone, koperasi, profile_pic } = req.body;
   try {
+    // Sediakan data untuk dikemas kini
+    const updateData = { 
+      full_name: full_name.trim(), 
+      email: email.trim().toLowerCase(), 
+      phone: phone.trim(), 
+      koperasi: koperasi.trim() 
+    };
+    
+    // Jika ada gambar profil dihantar, masukkan ke dalam database
+    if (profile_pic) {
+      updateData.profile_pic = profile_pic;
+    }
+
     const { data, error } = await supabase.from('participants')
-      .update({ full_name: full_name.trim(), email: email.trim().toLowerCase(), phone: phone.trim(), koperasi: koperasi.trim() })
+      .update(updateData)
       .eq('p_id', p_id).select();
       
     if (error) throw error;
     if (data.length === 0) return res.status(404).json({ error: "Pengguna tidak dijumpai" });
     res.status(200).json({ message: "Profil berjaya dikemaskini!", user: data[0] });
-  } catch (error) { res.status(500).json({ error: "Gagal mengemaskini profil." }); }
+  } catch (error) { 
+    res.status(500).json({ error: "Gagal mengemaskini profil." }); 
+  }
 });
 
 app.post('/api/checkin', async (req, res) => {
@@ -299,13 +315,9 @@ app.delete('/api/admin/events/:id', async (req, res) => {
   } catch (error) { res.status(500).json({ error: "Gagal memadam." }); }
 });
 
-// ==========================================
-// PENAMBAHAN KOPERASI DI DALAM API INI
-// ==========================================
 app.get('/api/admin/events/:id/participants', async (req, res) => {
   const { id } = req.params;
   try {
-    // Di sini lajur koperasi dimasukkan ke dalam .select()
     const { data, error } = await supabase.from('event_registrations').select(`attended, participants (p_id, full_name, email, phone, koperasi)`).eq('event_id', id);
     if (error) throw error; res.status(200).json(data);
   } catch (error) { res.status(500).json({ error: "Ralat pelayan." }); }
